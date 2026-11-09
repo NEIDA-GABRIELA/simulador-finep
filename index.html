@@ -1,0 +1,415 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Simulador de Enquadramento Financeiro Finep</title>
+  <style>
+    :root {
+      --primary: #1B365D;
+      --primary-light: #2A528A;
+      --bg: #F4F6F9;
+      --card-bg: #FFFFFF;
+      --text: #212529;
+      --muted: #6C757D;
+      --border: #DDE2E5;
+      --success: #1E7E34;
+      --success-bg: #D4EDDA;
+      --danger: #BD2130;
+      --danger-bg: #F8D7DA;
+      --warning: #856404;
+      --warning-bg: #FFF3CD;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+    body { background-color: var(--bg); color: var(--text); padding: 24px 16px; }
+    .container { max-width: 900px; margin: 0 auto; }
+    
+    header { text-align: center; margin-bottom: 32px; }
+    header h1 { color: var(--primary); font-size: 1.8rem; margin-bottom: 8px; }
+    header p { color: var(--muted); font-size: 0.95rem; }
+
+    .card { background: var(--card-bg); border-radius: 8px; padding: 24px; margin-bottom: 24px; box-shadow: 0 2px 4px rgba(0,0,0,0.06); border: 1px solid var(--border); }
+    .card-title { font-size: 1.15rem; font-weight: 600; color: var(--primary); margin-bottom: 16px; border-bottom: 2px solid var(--bg); padding-bottom: 8px; }
+
+    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px; }
+    .form-group { display: flex; flex-direction: column; }
+    .form-group label { font-size: 0.85rem; font-weight: 600; margin-bottom: 6px; color: #333; }
+    .form-group input, .form-group select { padding: 10px 12px; border: 1px solid var(--border); border-radius: 6px; font-size: 0.95rem; }
+    .form-group input:focus, .form-group select:focus { outline: none; border-color: var(--primary-light); box-shadow: 0 0 0 3px rgba(27, 54, 93, 0.15); }
+    
+    .badge { display: inline-block; padding: 4px 8px; border-radius: 4px; font-size: 0.75rem; font-weight: 600; }
+    
+    /* Decisão Destaque */
+    .decision-banner { border-radius: 8px; padding: 20px; text-align: center; margin-bottom: 24px; display: none; }
+    .decision-banner.sim { background: var(--success-bg); color: var(--success); border: 2px solid var(--success); }
+    .decision-banner.nao { background: var(--danger-bg); color: var(--danger); border: 2px solid var(--danger); }
+    .decision-banner.indet { background: var(--warning-bg); color: var(--warning); border: 2px solid var(--warning); }
+    .decision-title { font-size: 1.6rem; font-weight: 800; margin-bottom: 6px; }
+
+    /* Relatório */
+    .summary-list { list-style: none; margin-top: 12px; }
+    .summary-list li { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px dashed var(--border); font-size: 0.9rem; }
+    .summary-list li span:first-child { color: var(--muted); }
+    .summary-list li span:last-child { font-weight: 600; }
+
+    .actions { display: flex; gap: 12px; justify-content: flex-end; margin-top: 24px; }
+    button { cursor: pointer; padding: 12px 24px; border-radius: 6px; font-weight: 600; font-size: 0.95rem; border: none; transition: 0.2s ease; }
+    .btn-primary { background: var(--primary); color: #fff; }
+    .btn-primary:hover { background: var(--primary-light); }
+    .btn-primary:disabled { opacity: 0.6; cursor: not-allowed; }
+
+    .alert { padding: 12px; border-radius: 6px; margin-top: 16px; font-size: 0.9rem; display: none; }
+    .alert-success { background: var(--success-bg); color: var(--success); }
+    .alert-danger { background: var(--danger-bg); color: var(--danger); }
+  </style>
+</head>
+<body>
+<div class="container">
+  <header>
+    <h1>Simulador de Enquadramento Financeiro Finep</h1>
+    <p>Pré-análise determinística de viabilidade baseada nas diretrizes financeiras e de contrapartida</p>
+  </header>
+
+  <form id="simuladorForm">
+    <!-- Identificação -->
+    <div class="card">
+      <div class="card-title">1. Dados da Proponente</div>
+      <div class="grid">
+        <div class="form-group">
+          <label>Razão Social *</label>
+          <input type="text" id="company" required placeholder="Nome empresarial">
+        </div>
+        <div class="form-group">
+          <label>CNPJ *</label>
+          <input type="text" id="cnpj" required placeholder="00.000.000/0000-00" maxlength="18">
+        </div>
+        <div class="form-group">
+          <label>WhatsApp</label>
+          <input type="text" id="whatsapp" placeholder="(00) 00000-0000" maxlength="15">
+        </div>
+        <div class="form-group">
+          <label>E-mail</label>
+          <input type="email" id="email" placeholder="contato@empresa.com.br">
+        </div>
+      </div>
+    </div>
+
+    <!-- Demonstrações Contábeis -->
+    <div class="card">
+      <div class="card-title">2. Demonstrações Contábeis & Resultado</div>
+      <div class="grid">
+        <div class="form-group">
+          <label>Patrimônio Líquido (PL) *</label>
+          <input type="text" class="money" id="pl" required placeholder="R$ 0,00">
+        </div>
+        <div class="form-group">
+          <label>Ativo Total *</label>
+          <input type="text" class="money" id="ativoTotal" required placeholder="R$ 0,00">
+        </div>
+        <div class="form-group">
+          <label>Empréstimos e Financiamentos *</label>
+          <input type="text" class="money" id="divida" required placeholder="R$ 0,00">
+        </div>
+        <div class="form-group">
+          <label>Receita Operacional Bruta (ROB) *</label>
+          <input type="text" class="money" id="rob" required placeholder="R$ 0,00">
+        </div>
+        <div class="form-group">
+          <label>Receita Operacional Líquida (ROL) *</label>
+          <input type="text" class="money" id="rol" required placeholder="R$ 0,00">
+        </div>
+        <div class="form-group">
+          <label>Custos dos Produtos/Serviços *</label>
+          <input type="text" class="money" id="custos" required placeholder="R$ 0,00">
+        </div>
+        <div class="form-group">
+          <label>Despesas Operacionais *</label>
+          <input type="text" class="money" id="despesas" required placeholder="R$ 0,00">
+        </div>
+      </div>
+    </div>
+
+    <!-- Proposta -->
+    <div class="card">
+      <div class="card-title">3. Parâmetros da Proposta</div>
+      <div class="grid">
+        <div class="form-group">
+          <label>Modalidade de Arranjo *</label>
+          <select id="arranjo" required>
+            <option value="Simples">Arranjo Simples (Individual)</option>
+            <option value="Em Rede">Arranjo Em Rede (Parceria)</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Valor Solicitado à Finep (Subvenção) *</label>
+          <input type="text" class="money" id="valorFinep" required placeholder="R$ 0,00">
+        </div>
+        <div class="form-group">
+          <label>Valor Total do Projeto *</label>
+          <input type="text" class="money" id="valorTotal" required placeholder="R$ 0,00">
+        </div>
+      </div>
+    </div>
+
+    <!-- Resultado / Parecer -->
+    <div id="decisionCard" class="decision-banner">
+      <div id="decisionTitle" class="decision-title">SIM</div>
+      <p id="decisionReason"></p>
+    </div>
+
+    <div class="card" id="metricsCard" style="display:none;">
+      <div class="card-title">Indicadores e Detalhamento da Análise</div>
+      <ul class="summary-list">
+        <li><span>Classificação de Porte:</span> <span id="lblPorte">-</span></li>
+        <li><span>Resultado Operacional:</span> <span id="lblResOperacional">-</span></li>
+        <li><span>Endividamento Oneroso / Ativo Total:</span> <span id="lblEndividamento">-</span></li>
+        <li><span>Contrapartida Calculada:</span> <span id="lblContrapartida">-</span></li>
+        <li><span>% Contrapartida Efetiva:</span> <span id="lblPctContrapartida">-</span></li>
+        <li><span>Contrapartida Mínima Exigida:</span> <span id="lblContrapartidaMinima">-</span></li>
+        <li><span>Limites de Solicitação Finep:</span> <span id="lblLimitesFinep">-</span></li>
+      </ul>
+
+      <div class="actions">
+        <button type="button" id="btnSalvar" class="btn-primary">Salvar no Histórico Seguro</button>
+      </div>
+      <div id="statusAlert" class="alert"></div>
+    </div>
+  </form>
+</div>
+
+<script>
+  const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbw_FNrsi3Hyk12nhrdjFkr8HOctIdV3xa1CX4891iBPHJs9ZOYnPiMuAJq79NNz80v2vg/exec";
+
+  // Formatação Moeda e CNPJ
+  const moneyInputs = document.querySelectorAll('.money');
+  function formatCurrency(val) {
+    let num = val.replace(/\D/g, '');
+    if (!num) return '';
+    num = (parseFloat(num) / 100).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    return 'R$ ' + num;
+  }
+  function parseCurrency(str) {
+    if (!str) return 0;
+    const clean = str.replace(/[^\d,-]/g, '').replace(',', '.');
+    return parseFloat(clean) || 0;
+  }
+  function formatMoneyBRL(num) {
+    return num.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+  }
+
+  moneyInputs.forEach(input => {
+    input.addEventListener('input', (e) => {
+      e.target.value = formatCurrency(e.target.value);
+      calcular();
+    });
+  });
+
+  document.getElementById('cnpj').addEventListener('input', (e) => {
+    let x = e.target.value.replace(/\D/g, '').match(/(\d{0,2})(\d{0,3})(\d{0,3})(\d{0,4})(\d{0,2})/);
+    e.target.value = !x[2] ? x[1] : x[1] + '.' + x[2] + '.' + x[3] + '/' + x[4] + (x[5] ? '-' + x[5] : '');
+  });
+
+  document.getElementById('whatsapp').addEventListener('input', (e) => {
+    let x = e.target.value.replace(/\D/g, '').match(/(\d{0,2})(\d{0,5})(\d{0,4})/);
+    e.target.value = !x[2] ? x[1] : '(' + x[1] + ') ' + x[2] + (x[3] ? '-' + x[3] : '');
+  });
+
+  document.getElementById('arranjo').addEventListener('change', calcular);
+
+  let currentAnalysis = null;
+
+  function calcular() {
+    const pl = parseCurrency(document.getElementById('pl').value);
+    const ativoTotal = parseCurrency(document.getElementById('ativoTotal').value);
+    const divida = parseCurrency(document.getElementById('divida').value);
+    const rob = parseCurrency(document.getElementById('rob').value);
+    const rol = parseCurrency(document.getElementById('rol').value);
+    const custos = parseCurrency(document.getElementById('custos').value);
+    const despesas = parseCurrency(document.getElementById('despesas').value);
+    const arranjo = document.getElementById('arranjo').value;
+    const valorFinep = parseCurrency(document.getElementById('valorFinep').value);
+    const valorTotal = parseCurrency(document.getElementById('valorTotal').value);
+
+    if (!pl && !ativoTotal && !rob && !valorFinep && !valorTotal) {
+      document.getElementById('decisionCard').style.display = 'none';
+      document.getElementById('metricsCard').style.display = 'none';
+      return;
+    }
+
+    // Cálculos Derivados
+    const resOperacional = rol - custos - despesas;
+    const endividamento = ativoTotal > 0 ? (divida / ativoTotal) : 0;
+    const contrapartida = valorTotal - valorFinep;
+    const pctContrapartida = valorTotal > 0 ? (contrapartida / valorTotal) : 0;
+
+    // Porte e Mínimo de Contrapartida
+    let porte = '';
+    let minPctContrapartida = 0;
+    let porteValido = true;
+
+    if (rob < 4800000) {
+      porte = 'Microempresa ou EPP';
+      minPctContrapartida = arranjo === 'Simples' ? 0.05 : null;
+    } else if (rob <= 16000000) {
+      porte = 'Pequena Empresa';
+      minPctContrapartida = arranjo === 'Simples' ? 0.10 : null;
+    } else if (rob <= 90000000) {
+      porte = 'Média Empresa I';
+      minPctContrapartida = arranjo === 'Simples' ? 0.30 : 0.15;
+    } else if (rob <= 300000000) {
+      porte = 'Média Empresa II';
+      minPctContrapartida = arranjo === 'Simples' ? 0.40 : 0.20;
+    } else {
+      porte = 'Grande Empresa';
+      minPctContrapartida = arranjo === 'Simples' ? 0.50 : 0.25;
+    }
+
+    if (minPctContrapartida === null) {
+      porteValido = false;
+    }
+
+    // Limites de Solicitação
+    const minFinep = 5000000;
+    const maxFinep = arranjo === 'Simples' ? 25000000 : 40000000;
+    const finepOk = valorFinep >= minFinep && valorFinep <= maxFinep;
+
+    // Regras de Enquadramento
+    let decisao = 'SIM';
+    let motivos = [];
+
+    // 7.1.7.1 - Cumulatividade
+    if (pl <= 0) {
+      decisao = 'NÃO';
+      motivos.push('Patrimônio Líquido negativo ou nulo.');
+    }
+
+    // Limites de proposta
+    if (!finepOk) {
+      decisao = 'NÃO';
+      motivos.push(`Valor solicitado à Finep fora da faixa (${formatMoneyBRL(minFinep)} a ${formatMoneyBRL(maxFinep)}).`);
+    }
+
+    if (!porteValido) {
+      decisao = 'NÃO';
+      motivos.push(`Modalidade 'Em Rede' sem percentual aplicável configurado para ${porte}.`);
+    } else if (pctContrapartida < minPctContrapartida) {
+      decisao = 'NÃO';
+      motivos.push(`Contrapartida (${(pctContrapartida * 100).toFixed(1)}%) inferior ao mínimo de ${(minPctContrapartida * 100).toFixed(0)}% exigido para o porte.`);
+    }
+
+    // 7.1.7.b - Análise de Resultado Operacional e Endividamento
+    if (resOperacional < 0) {
+      // 7.1.7.b.1
+      if (endividamento > 0.30) {
+        decisao = 'NÃO';
+        motivos.push(`Endividamento oneroso (${(endividamento * 100).toFixed(1)}%) excede o teto de 30% do Ativo Total para resultado operacional negativo.`);
+      }
+      if (ativoTotal > 0 && contrapartida > (ativoTotal * 0.50)) {
+        decisao = 'NÃO';
+        motivos.push(`Contrapartida excede o teto de 50% do Ativo Total.`);
+      }
+    } else if (resOperacional > 0) {
+      // 7.1.7.b.2 vs 7.1.7.b.3
+      const limite20 = resOperacional * 0.20;
+      if (contrapartida > limite20) {
+        // b.3
+        if (endividamento > 0.30) {
+          decisao = 'NÃO';
+          motivos.push(`Contrapartida > 20% do Res. Operacional e endividamento (${(endividamento * 100).toFixed(1)}%) superior a 30% do Ativo Total.`);
+        }
+        if (ativoTotal > 0 && contrapartida > (ativoTotal * 0.50)) {
+          decisao = 'NÃO';
+          motivos.push(`Contrapartida excede o teto de 50% do Ativo Total.`);
+        }
+      }
+    } else {
+      decisao = 'NÃO';
+      motivos.push('Resultado Operacional igual a zero: não avaliável pelas regras do edital.');
+    }
+
+    // Atualização visual
+    const decisionCard = document.getElementById('decisionCard');
+    const decisionTitle = document.getElementById('decisionTitle');
+    const decisionReason = document.getElementById('decisionReason');
+
+    decisionCard.style.display = 'block';
+    decisionCard.className = 'decision-banner ' + (decisao === 'SIM' ? 'sim' : 'nao');
+    decisionTitle.textContent = decisao;
+    decisionReason.textContent = motivos.length === 0 
+      ? 'A proposta atende a todos os critérios financeiros e limites de contrapartida analisados.' 
+      : motivos.join(' | ');
+
+    document.getElementById('lblPorte').textContent = porte;
+    document.getElementById('lblResOperacional').textContent = formatMoneyBRL(resOperacional);
+    document.getElementById('lblEndividamento').textContent = (endividamento * 100).toFixed(2) + '%';
+    document.getElementById('lblContrapartida').textContent = formatMoneyBRL(contrapartida);
+    document.getElementById('lblPctContrapartida').textContent = (pctContrapartida * 100).toFixed(2) + '%';
+    document.getElementById('lblContrapartidaMinima').textContent = porteValido ? (minPctContrapartida * 100).toFixed(0) + '%' : 'N/A';
+    document.getElementById('lblLimitesFinep').textContent = `${formatMoneyBRL(minFinep)} a ${formatMoneyBRL(maxFinep)}`;
+
+    document.getElementById('metricsCard').style.display = 'block';
+
+    currentAnalysis = {
+      decision: decisao,
+      decision_reason: motivos.join(' | ') || 'Atende aos critérios',
+      overall: `Porte: ${porte} | Res. Operacional: ${formatMoneyBRL(resOperacional)} | Endividamento: ${(endividamento * 100).toFixed(1)}%`,
+      requested_value: valorFinep,
+      total_value: valorTotal,
+      counterpart_value: contrapartida,
+      counterpart_percent: pctContrapartida,
+      company_size: porte,
+      arrangement: arranjo,
+      payload: { pl, ativoTotal, divida, rob, rol, custos, despesas, resOperacional, endividamento, motivos }
+    };
+  }
+
+  // Envio ao Google Apps Script
+  document.getElementById('btnSalvar').addEventListener('click', async () => {
+    const company = document.getElementById('company').value.trim();
+    const cnpj = document.getElementById('cnpj').value.trim();
+    const whatsapp = document.getElementById('whatsapp').value.trim();
+    const email = document.getElementById('email').value.trim();
+    const statusAlert = document.getElementById('statusAlert');
+    const btnSalvar = document.getElementById('btnSalvar');
+
+    if (!company || cnpj.length < 18 || !currentAnalysis) {
+      alert('Por favor, preencha Razão Social, CNPJ válido e complete a simulação antes de salvar.');
+      return;
+    }
+
+    btnSalvar.disabled = true;
+    btnSalvar.textContent = 'Gravando na base segura...';
+    statusAlert.style.display = 'none';
+
+    const payloadEnvio = {
+      company,
+      cnpj,
+      whatsapp,
+      email,
+      ...currentAnalysis
+    };
+
+    try {
+      await fetch(SCRIPT_URL, {
+        method: 'POST',
+        mode: 'no-cors',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payloadEnvio)
+      });
+
+      statusAlert.className = 'alert alert-success';
+      statusAlert.textContent = 'Simulação gravada com sucesso no histórico privado!';
+      statusAlert.style.display = 'block';
+    } catch (err) {
+      statusAlert.className = 'alert alert-danger';
+      statusAlert.textContent = 'Erro de comunicação ao salvar os dados. Tente novamente.';
+      statusAlert.style.display = 'block';
+    } finally {
+      btnSalvar.disabled = false;
+      btnSalvar.textContent = 'Salvar no Histórico Seguro';
+    }
+  });
+</script>
+</body>
+</html>
